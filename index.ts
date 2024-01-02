@@ -41,15 +41,13 @@ import type {
 
 import { LoggedInUser } from './example-server';
 
-const functions = require('firebase-functions');
-
 const app = express();
 const MemoryStore = memoryStore(session);
 
 const {
   ENABLE_CONFORMANCE,
   ENABLE_HTTPS,
-  RP_ID = 'fido-a3cc8.web.app',
+  RP_ID = 'localhost',
 } = process.env;
 
 app.use(express.static('./public/'));
@@ -145,6 +143,12 @@ app.get('/generate-registration-options', async (req, res) => {
     })),
     authenticatorSelection: {
       residentKey: 'discouraged',
+      /**
+       * Wondering why user verification isn't required? See here:
+       *
+       * https://passkeys.dev/docs/use-cases/bootstrapping/#a-note-about-user-verification
+       */
+      userVerification: 'preferred',
     },
     /**
      * Support the two most common algorithms: ES256, and RS256
@@ -177,7 +181,7 @@ app.post('/verify-registration', async (req, res) => {
       expectedChallenge: `${expectedChallenge}`,
       expectedOrigin,
       expectedRPID: rpID,
-      requireUserVerification: true,
+      requireUserVerification: false,
     };
     verification = await verifyRegistrationResponse(opts);
   } catch (error) {
@@ -228,7 +232,12 @@ app.get('/generate-authentication-options', async (req, res) => {
       type: 'public-key',
       transports: dev.transports,
     })),
-    userVerification: 'required',
+    /**
+     * Wondering why user verification isn't required? See here:
+     *
+     * https://passkeys.dev/docs/use-cases/bootstrapping/#a-note-about-user-verification
+     */
+    userVerification: 'preferred',
     rpID,
   };
 
@@ -274,7 +283,7 @@ app.post('/verify-authentication', async (req, res) => {
       expectedOrigin,
       expectedRPID: rpID,
       authenticator: dbAuthenticator,
-      requireUserVerification: true,
+      requireUserVerification: false,
     };
     verification = await verifyAuthenticationResponse(opts);
   } catch (error) {
@@ -323,4 +332,3 @@ if (ENABLE_HTTPS) {
     console.log(`🚀 Server ready at ${expectedOrigin} (${host}:${port})`);
   });
 }
-exports.app = functions.https.onRequest(app);
